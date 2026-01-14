@@ -1,0 +1,55 @@
+import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
+import { profileService } from '../../services/profile';
+import { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function Profile() {
+    const { signOut, user } = useAuth();
+    const [profile, setProfile] = useState<any>(null);
+
+    useEffect(() => {
+        profileService.getMyProfile().then(setProfile).catch(console.error);
+    }, []);
+
+    return (
+        <View className="flex-1 bg-gray-50 p-6">
+            <View className="items-center mb-8 mt-4">
+                <View className="w-24 h-24 bg-white rounded-full shadow-sm mb-4 justify-center items-center overflow-hidden border-4 border-white">
+                    {profile?.avatar_url ? (
+                        <Image source={{ uri: profile.avatar_url }} className="w-full h-full" />
+                    ) : (
+                        <Ionicons name="person" size={40} color="#d1d5db" />
+                    )}
+                </View>
+                <Text className="text-xl font-bold text-gray-900">{profile?.full_name || 'Carregando...'}</Text>
+                <Text className="text-gray-500">{user?.email}</Text>
+            </View>
+
+            <View className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                <View className="p-4 border-b border-gray-50 flex-row justify-between">
+                    <Text className="text-gray-500">Cargo</Text>
+                    <Text className="font-bold text-gray-800">{profile?.role || '-'}</Text>
+                </View>
+                <View className="p-4 border-b border-gray-50 flex-row justify-between">
+                    <Text className="text-gray-500">Departamento</Text>
+                    <Text className="font-bold text-gray-800">{profile?.department || '-'}</Text>
+                </View>
+                <View className="p-4 flex-row justify-between">
+                    <Text className="text-gray-500">Admissão</Text>
+                    <Text className="font-bold text-gray-800">
+                        {profile?.admission_date ? new Date(profile.admission_date).toLocaleDateString() : '-'}
+                    </Text>
+                </View>
+            </View>
+
+            <TouchableOpacity
+                onPress={() => signOut()}
+                className="bg-red-50 py-4 px-4 rounded-xl flex-row justify-center items-center gap-2 border border-red-100"
+            >
+                <Ionicons name="log-out-outline" size={20} color="#dc2626" />
+                <Text className="text-red-600 font-bold">Sair do Aplicativo</Text>
+            </TouchableOpacity>
+        </View>
+    );
+}

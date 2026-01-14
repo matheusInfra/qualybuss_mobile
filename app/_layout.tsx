@@ -1,24 +1,45 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import "../global.css";
+import { Slot, useRouter, useSegments } from "expo-router";
+import { AuthProvider, useAuth } from "../context/AuthContext";
+import { useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
+import { StatusBar } from "expo-status-bar";
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const MainLayout = () => {
+  const { session, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
-export const unstable_settings = {
-  anchor: '(tabs)',
+  useEffect(() => {
+    if (loading) return;
+
+    const inAuthGroup = segments[0] === "(app)";
+
+    if (!session && inAuthGroup) {
+      // Redirect to login if accessing protected route without session
+      router.replace("/login");
+    } else if (session && (segments[0] === "login" || segments.length === 0)) {
+      // Redirect to app if logged in and on login or root
+      router.replace("/(app)/");
+    }
+  }, [session, loading, segments]);
+
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="#4f46e5" />
+      </View>
+    );
+  }
+
+  return <Slot />;
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <MainLayout />
+      <StatusBar style="dark" />
+    </AuthProvider>
   );
 }
