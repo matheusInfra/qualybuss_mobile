@@ -9,6 +9,9 @@ export const profileService = {
         // OR we match by email if user_id is not set (legacy/migration case)
         // For this implementation, we try matching by user_id first, then email.
 
+
+        // Attempt 1: Match by user_id
+        console.log('[ProfileService] Searching for profile with user_id:', user.id);
         let { data, error } = await supabase
             .from('collaborators')
             .select('*')
@@ -16,15 +19,24 @@ export const profileService = {
             .single();
 
         if (error || !data) {
-            // Fallback: Try matching by email
+            console.warn('[ProfileService] user_id match failed or empty. Trying email fallback:', user.email);
+
+            // Attempt 2: Match by email (Fallback for legacy/manual inserts)
             const { data: dataByEmail, error: errorByEmail } = await supabase
                 .from('collaborators')
                 .select('*')
                 .eq('email', user.email)
                 .single();
 
-            if (errorByEmail) throw errorByEmail;
+            if (errorByEmail) {
+                console.error('[ProfileService] Profile not found by ID or Email.', errorByEmail);
+                throw errorByEmail;
+            }
+
             data = dataByEmail;
+            console.log('[ProfileService] Profile found via EMAIL:', data.id);
+        } else {
+            console.log('[ProfileService] Profile found via USER_ID:', data.id);
         }
 
         return data;

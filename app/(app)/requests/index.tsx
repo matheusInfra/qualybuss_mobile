@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { Link, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { leaveService, LeaveRequest } from '../../services/leaves';
-import { profileService } from '../../services/profile';
+import { leaveService, LeaveRequest } from '../../../services/leaves';
+import { profileService } from '../../../services/profile';
 
 const STATUS_COLORS = {
     PENDING: 'bg-amber-100 text-amber-700',

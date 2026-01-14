@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { occurrenceService, Occurrence } from '../../services/occurrences';
-import { profileService } from '../../services/profile';
+import { occurrenceService, Occurrence } from '../../../services/occurrences';
+import { profileService } from '../../../services/profile';
 
 const TYPE_CONFIG: any = {
     'ADVERTENCIA_VERBAL': { label: 'Adv. Verbal', color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200' },

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { leaveService } from '../../services/leaves';
-import { profileService } from '../../services/profile';
+import { leaveService } from '../../../services/leaves';
+import { profileService } from '../../../services/profile';
 
 const TYPES = [
     { id: 'FERIAS', label: 'Férias', icon: 'airplane', color: 'bg-emerald-100 text-emerald-700' },
