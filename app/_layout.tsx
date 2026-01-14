@@ -1,3 +1,4 @@
+import "react-native-gesture-handler";
 import "../global.css";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { AuthProvider, useAuth } from "../context/AuthContext";
@@ -18,9 +19,9 @@ const MainLayout = () => {
     if (!session && inAuthGroup) {
       // Redirect to login if accessing protected route without session
       router.replace("/login");
-    } else if (session && (segments[0] === "login" || segments.length === 0)) {
+    } else if (session && (segments[0] === "login" || !segments[0])) {
       // Redirect to app if logged in and on login or root
-      router.replace("/(app)/");
+      router.replace("/(app)");
     }
   }, [session, loading, segments]);
 
