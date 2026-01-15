@@ -12,7 +12,7 @@ export default function AppLayout() {
                     headerShown: true,
                     drawerActiveTintColor: '#4f46e5',
                     drawerInactiveTintColor: '#374151',
-                    drawerLabelStyle: { marginLeft: -20, fontWeight: '500' },
+                    drawerLabelStyle: { marginLeft: 10, fontWeight: '500' },
                     drawerStyle: { width: 300 },
                     headerTintColor: '#1f2937',
                     headerTitleStyle: { color: '#1f2937' },
@@ -37,7 +37,7 @@ export default function AppLayout() {
                 />
 
                 <Drawer.Screen
-                    name="requests/index"
+                    name="requests"
                     options={{
                         drawerLabel: 'Minhas Solicitações',
                         title: 'Solicitações',
@@ -63,14 +63,7 @@ export default function AppLayout() {
                     }}
                 />
 
-                {/* Hidding specific screens from Drawer menu but keeping them accessible */}
-                <Drawer.Screen
-                    name="requests/new"
-                    options={{
-                        drawerItemStyle: { display: 'none' },
-                        title: 'Nova Solicitação',
-                    }}
-                />
+
             </Drawer>
         </GestureHandlerRootView>
     );

@@ -16,9 +16,32 @@ export default function NewRequestScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [type, setType] = useState('FERIAS');
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+    // State now stores DD/MM/YYYY for display
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [reason, setReason] = useState('');
+
+    // Helper to mask date input
+    const handleDateChange = (text: string, setter: (val: string) => void) => {
+        const cleaned = text.replace(/\D/g, '');
+        let formatted = cleaned;
+
+        if (cleaned.length > 2) {
+            formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+        }
+        if (cleaned.length > 4) {
+            formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
+        }
+        setter(formatted);
+    };
+
+    // Helper to convert DD/MM/YYYY to YYYY-MM-DD for Database
+    const convertToISO = (dateStr: string) => {
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) return null;
+        const [day, month, year] = parts;
+        return `${year}-${month}-${day}`;
+    };
 
     const handleSubmit = async () => {
         if (!startDate || !endDate) {
@@ -26,12 +49,22 @@ export default function NewRequestScreen() {
             return;
         }
 
-        // Basic date validation
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const isoStart = convertToISO(startDate);
+        const isoEnd = convertToISO(endDate);
 
-        if (diffDays <= 0) {
+        if (!isoStart || !isoEnd || startDate.length !== 10 || endDate.length !== 10) {
+            Alert.alert('Erro', 'Datas inválidas. Use o formato DD/MM/AAAA.');
+            return;
+        }
+
+        const start = new Date(isoStart + 'T00:00:00');
+        const end = new Date(isoEnd + 'T00:00:00');
+
+        // Calculate difference including start day
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        if (end < start) {
             Alert.alert('Erro', 'Data final deve ser posterior à data inicial.');
             return;
         }
@@ -42,8 +75,8 @@ export default function NewRequestScreen() {
             await leaveService.createRequest({
                 collaborator_id: profile.id,
                 type: type as any,
-                start_date: startDate,
-                end_date: endDate,
+                start_date: isoStart,
+                end_date: isoEnd,
                 days_count: diffDays,
                 reason,
                 status: 'PENDING'
@@ -78,23 +111,25 @@ export default function NewRequestScreen() {
             <Text className="text-sm font-bold text-gray-400 uppercase mb-2">Período</Text>
             <View className="flex-row gap-4 mb-6">
                 <View className="flex-1">
-                    <Text className="text-xs text-gray-500 mb-1">Início (AAAA-MM-DD)</Text>
+                    <Text className="text-xs text-gray-500 mb-1">Início (DD/MM/AAAA)</Text>
                     <TextInput
                         className="bg-white p-3 rounded-xl border border-gray-200 font-bold text-gray-800"
                         value={startDate}
-                        onChangeText={setStartDate}
-                        placeholder="2024-01-01"
+                        onChangeText={(text) => handleDateChange(text, setStartDate)}
+                        placeholder="01/01/2024"
                         keyboardType="numeric"
+                        maxLength={10}
                     />
                 </View>
                 <View className="flex-1">
-                    <Text className="text-xs text-gray-500 mb-1">Fim (AAAA-MM-DD)</Text>
+                    <Text className="text-xs text-gray-500 mb-1">Fim (DD/MM/AAAA)</Text>
                     <TextInput
                         className="bg-white p-3 rounded-xl border border-gray-200 font-bold text-gray-800"
                         value={endDate}
-                        onChangeText={setEndDate}
-                        placeholder="2024-01-01"
+                        onChangeText={(text) => handleDateChange(text, setEndDate)}
+                        placeholder="15/01/2024"
                         keyboardType="numeric"
+                        maxLength={10}
                     />
                 </View>
             </View>

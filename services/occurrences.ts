@@ -16,7 +16,7 @@ export const occurrenceService = {
             .from('occurrences')
             .select('*')
             .eq('collaborator_id', collaboratorId)
-            .eq('archived', false) // Only show active items
+            // .eq('archived', false) // Removed: Column does not exist
             .order('date_event', { ascending: false });
 
         if (error) throw error;

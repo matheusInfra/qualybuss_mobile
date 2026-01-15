@@ -27,6 +27,9 @@ export default function Profile() {
             </View>
 
             <View className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                <View className="bg-gray-50 px-4 py-2 border-b border-gray-100">
+                    <Text className="font-bold text-gray-500 uppercase text-xs">Informações Profissionais</Text>
+                </View>
                 <View className="p-4 border-b border-gray-50 flex-row justify-between">
                     <Text className="text-gray-500">Cargo</Text>
                     <Text className="font-bold text-gray-800">{profile?.role || '-'}</Text>
@@ -40,6 +43,50 @@ export default function Profile() {
                     <Text className="font-bold text-gray-800">
                         {profile?.admission_date ? new Date(profile.admission_date).toLocaleDateString() : '-'}
                     </Text>
+                </View>
+            </View>
+
+            <View className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                <View className="bg-gray-50 px-4 py-2 border-b border-gray-100">
+                    <Text className="font-bold text-gray-500 uppercase text-xs">Documentos Pessoais</Text>
+                </View>
+                <View className="p-4 border-b border-gray-50 flex-row justify-between">
+                    <Text className="text-gray-500">CPF</Text>
+                    <Text className="font-bold text-gray-800">{profile?.cpf || '-'}</Text>
+                </View>
+                <View className="p-4 border-b border-gray-50 flex-row justify-between">
+                    <Text className="text-gray-500">RG</Text>
+                    <Text className="font-bold text-gray-800">{profile?.rg || '-'}</Text>
+                </View>
+                <View className="p-4 border-b border-gray-50 flex-row justify-between">
+                    <Text className="text-gray-500">PIS</Text>
+                    <Text className="font-bold text-gray-800">{profile?.pis || '-'}</Text>
+                </View>
+                <View className="p-4 flex-row justify-between">
+                    <Text className="text-gray-500">Nascimento</Text>
+                    <Text className="font-bold text-gray-800">
+                        {profile?.birth_date ? new Date(profile.birth_date).toLocaleDateString() : '-'}
+                    </Text>
+                </View>
+            </View>
+
+            <View className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                <View className="bg-gray-50 px-4 py-2 border-b border-gray-100">
+                    <Text className="font-bold text-gray-500 uppercase text-xs">Contato & Endereço</Text>
+                </View>
+                <View className="p-4 border-b border-gray-50">
+                    <Text className="text-gray-500 text-xs mb-1">Email Corporativo</Text>
+                    <Text className="font-bold text-gray-800">{profile?.corporate_email || '-'}</Text>
+                </View>
+                <View className="p-4">
+                    <Text className="text-gray-500 text-xs mb-1">Endereço</Text>
+                    <Text className="font-bold text-gray-800">
+                        {profile?.address_street}, {profile?.address_number}
+                    </Text>
+                    <Text className="text-gray-600 text-sm">
+                        {profile?.address_city} - {profile?.address_state}
+                    </Text>
+                    <Text className="text-gray-500 text-xs mt-1">CEP: {profile?.address_zip_code}</Text>
                 </View>
             </View>
 
