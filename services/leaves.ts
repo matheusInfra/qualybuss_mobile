@@ -24,6 +24,23 @@ export const leaveService = {
         return data as LeaveRequest[];
     },
 
+    // Get Vacation Balance (RPC)
+    async getVacationBalance(collaboratorId: string) {
+        try {
+            const { data, error } = await supabase
+                .rpc('get_vacation_balance', { target_collaborator_id: collaboratorId });
+
+            if (error) {
+                console.error('RPC Error:', error);
+                throw error;
+            }
+            return data;
+        } catch (error) {
+            console.error('Error fetching balance:', error);
+            return { total: 30, available: 0, taken: 0 }; // Fallback safe
+        }
+    },
+
     async createRequest(request: Partial<LeaveRequest>) {
         const { data, error } = await supabase
             .from('leave_requests')

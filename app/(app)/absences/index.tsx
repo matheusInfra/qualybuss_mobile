@@ -38,17 +38,16 @@ export default function AbsencesScreen() {
                 setTimeInHouse(calculateTimeInHouse(p.admission_date));
             }
 
-            // Future: Get real balance from database logic
-            // For now, we simulate based on "leaves taken" if complex logic isn't in backend yet
-            const requests = await leaveService.getMyRequests(p.id);
-            const daysTaken = requests
-                .filter((r: any) => r.type === 'FERIAS' && r.status === 'APPROVED')
-                .reduce((acc: number, curr: any) => acc + curr.days_count, 0);
-
-            setBalance({
-                total: 30, // Default CLT
-                available: 30 - daysTaken
-            });
+            // Get Real Balance from Database (RPC)
+            if (p?.id) {
+                const balanceData = await leaveService.getVacationBalance(p.id);
+                setBalance({
+                    total: balanceData.total || 30,
+                    available: balanceData.available ?? 30 // Fallback if RPC fails/null
+                });
+            } else {
+                setBalance({ available: 0, total: 30 });
+            }
 
         } catch (error) {
             console.error(error);

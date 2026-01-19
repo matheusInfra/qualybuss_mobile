@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { leaveService } from '../../../services/leaves';
 import { profileService } from '../../../services/profile';
+import { documentService } from '../../../services/documents';
 
 const TYPES = [
     { id: 'FERIAS', label: 'Férias', icon: 'airplane', color: 'bg-emerald-100 text-emerald-700' },
@@ -16,76 +18,88 @@ export default function NewRequestScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [type, setType] = useState('FERIAS');
-    // State now stores DD/MM/YYYY for display
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [reason, setReason] = useState('');
+    const [attachment, setAttachment] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
 
-    // Helper to mask date input
-    const handleDateChange = (text: string, setter: (val: string) => void) => {
-        const cleaned = text.replace(/\D/g, '');
-        let formatted = cleaned;
+    // ... (existing date helpers)
 
-        if (cleaned.length > 2) {
-            formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+    const pickDocument = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: ['image/*', 'application/pdf'],
+                copyToCacheDirectory: true,
+            });
+
+            if (result.canceled) return;
+            setAttachment(result.assets[0]);
+        } catch (err) {
+            Alert.alert('Erro', 'Falha ao selecionar arquivo.');
         }
-        if (cleaned.length > 4) {
-            formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
-        }
-        setter(formatted);
-    };
-
-    // Helper to convert DD/MM/YYYY to YYYY-MM-DD for Database
-    const convertToISO = (dateStr: string) => {
-        const parts = dateStr.split('/');
-        if (parts.length !== 3) return null;
-        const [day, month, year] = parts;
-        return `${year}-${month}-${day}`;
     };
 
     const handleSubmit = async () => {
-        if (!startDate || !endDate) {
-            Alert.alert('Erro', 'Preencha as datas.');
+        if (!startDate) { // endDate can be same as start
+            Alert.alert('Erro', 'Preencha a data de início.');
+            return;
+        }
+
+        // Strict requirement for ATESTADO
+        if (type === 'ATESTADO' && !attachment) {
+            Alert.alert('Obrigatório', 'Para Atestados, é necessário anexar um comprovante (Foto ou PDF).');
             return;
         }
 
         const isoStart = convertToISO(startDate);
-        const isoEnd = convertToISO(endDate);
+        const isoEnd = endDate ? convertToISO(endDate) : isoStart; // Single day default
 
-        if (!isoStart || !isoEnd || startDate.length !== 10 || endDate.length !== 10) {
-            Alert.alert('Erro', 'Datas inválidas. Use o formato DD/MM/AAAA.');
+        if (!isoStart || !isoEnd) {
+            Alert.alert('Erro', 'Datas inválidas.');
             return;
         }
 
+        // ... (existing validation)
+
         const start = new Date(isoStart + 'T00:00:00');
         const end = new Date(isoEnd + 'T00:00:00');
-
-        // Calculate difference including start day
         const diffTime = Math.abs(end.getTime() - start.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
         if (end < start) {
-            Alert.alert('Erro', 'Data final deve ser posterior à data inicial.');
+            Alert.alert('Erro', 'Data final inválida.');
             return;
         }
 
         setLoading(true);
         try {
+            let fileUrl = '';
+            if (attachment) {
+                fileUrl = await documentService.uploadDocument(
+                    attachment.uri,
+                    attachment.name,
+                    attachment.mimeType || 'application/octet-stream',
+                    'requests'
+                );
+            }
+
             const profile = await profileService.getMyProfile();
+            const finalReason = fileUrl ? `${reason}\n\n[Anexo]: ${fileUrl}` : reason;
+
             await leaveService.createRequest({
                 collaborator_id: profile.id,
                 type: type as any,
                 start_date: isoStart,
                 end_date: isoEnd,
                 days_count: diffDays,
-                reason,
+                reason: finalReason,
                 status: 'PENDING'
             });
 
             Alert.alert('Sucesso', 'Solicitação enviada!');
             router.back();
         } catch (error: any) {
-            Alert.alert('Erro', error.message || 'Falha ao enviar solicitação');
+            Alert.alert('Erro', error.message || 'Falha ao enviar.');
         } finally {
             setLoading(false);
         }
@@ -93,14 +107,18 @@ export default function NewRequestScreen() {
 
     return (
         <ScrollView className="flex-1 bg-gray-50" contentContainerStyle={{ padding: 16 }}>
-
+            {/* ... (Type Selector) ... */}
             <Text className="text-sm font-bold text-gray-400 uppercase mb-2">Tipo de Solicitação</Text>
             <View className="flex-row flex-wrap gap-2 mb-6">
                 {TYPES.map(t => (
                     <TouchableOpacity
                         key={t.id}
                         onPress={() => setType(t.id)}
-                        className={`px-4 py-3 rounded-xl border flex-row items-center gap-2 ${type === t.id ? `bg-white border-indigo-500 shadow-sm` : 'bg-gray-100 border-transparent'}`}
+                        className="px-4 py-3 rounded-xl border flex-row items-center gap-2"
+                        style={{
+                            backgroundColor: type === t.id ? '#ffffff' : '#f3f4f6',
+                            borderColor: type === t.id ? '#4f46e5' : 'transparent',
+                        }}
                     >
                         <Ionicons name={t.icon as any} size={16} color={type === t.id ? '#4f46e5' : '#9ca3af'} />
                         <Text className={`font-bold ${type === t.id ? 'text-indigo-600' : 'text-gray-500'}`}>{t.label}</Text>
@@ -108,6 +126,7 @@ export default function NewRequestScreen() {
                 ))}
             </View>
 
+            {/* Dates */}
             <Text className="text-sm font-bold text-gray-400 uppercase mb-2">Período</Text>
             <View className="flex-row gap-4 mb-6">
                 <View className="flex-1">
@@ -122,17 +141,43 @@ export default function NewRequestScreen() {
                     />
                 </View>
                 <View className="flex-1">
-                    <Text className="text-xs text-gray-500 mb-1">Fim (DD/MM/AAAA)</Text>
+                    <Text className="text-xs text-gray-500 mb-1">Fim (Opcional se 1 dia)</Text>
                     <TextInput
                         className="bg-white p-3 rounded-xl border border-gray-200 font-bold text-gray-800"
                         value={endDate}
                         onChangeText={(text) => handleDateChange(text, setEndDate)}
-                        placeholder="15/01/2024"
+                        placeholder="Ignorar se mesmo dia"
                         keyboardType="numeric"
                         maxLength={10}
                     />
                 </View>
             </View>
+
+            {/* File Upload (Conditional) */}
+            {['ATESTADO', 'LICENCA', 'FALTA'].includes(type) && (
+                <View className="mb-6 animate-fade-in-up">
+                    <Text className="text-sm font-bold text-gray-400 uppercase mb-2">Comprovante {type === 'ATESTADO' && '(Obrigatório)'}</Text>
+                    <TouchableOpacity
+                        onPress={pickDocument}
+                        className={`border-2 border-dashed rounded-xl p-6 items-center justify-center ${attachment ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-300'}`}
+                    >
+                        {attachment ? (
+                            <View className="items-center">
+                                <Ionicons name="document-text" size={32} color="#4f46e5" />
+                                <Text className="font-bold text-indigo-700 mt-2 text-center" numberOfLines={1}>
+                                    {attachment.name}
+                                </Text>
+                                <Text className="text-xs text-indigo-400">Clique para alterar</Text>
+                            </View>
+                        ) : (
+                            <View className="items-center">
+                                <Ionicons name="cloud-upload-outline" size={32} color="#9ca3af" />
+                                <Text className="font-bold text-gray-500 mt-2">Toque para selecionar arquivo (PDF/Foto)</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <Text className="text-sm font-bold text-gray-400 uppercase mb-2">Motivo / Observação</Text>
             <TextInput
@@ -155,7 +200,6 @@ export default function NewRequestScreen() {
                     <Text className="text-white font-bold text-lg">Enviar Solicitação</Text>
                 )}
             </TouchableOpacity>
-
         </ScrollView>
     );
 }

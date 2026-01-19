@@ -55,6 +55,15 @@ export default function AppLayout() {
                 />
 
                 <Drawer.Screen
+                    name="documents/index"
+                    options={{
+                        drawerLabel: 'Meus Documentos',
+                        title: 'Documentos',
+                        drawerIcon: ({ color, size }) => <Ionicons name="folder-open-outline" size={size} color={color} />,
+                    }}
+                />
+
+                <Drawer.Screen
                     name="profile"
                     options={{
                         drawerLabel: 'Meu Perfil',
