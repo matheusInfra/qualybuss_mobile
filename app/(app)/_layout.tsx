@@ -72,6 +72,15 @@ export default function AppLayout() {
                     }}
                 />
 
+                <Drawer.Screen
+                    name="settings/index"
+                    options={{
+                        drawerLabel: 'Configurações',
+                        title: 'Configurações',
+                        drawerIcon: ({ color, size }) => <Ionicons name="settings-outline" size={22} color={color} />,
+                    }}
+                />
+
 
             </Drawer>
         </GestureHandlerRootView>
