@@ -119,11 +119,12 @@ export const documentService = {
         }
     },
     // 3. Sign Document (Upload Signature & Update Record)
-    async signDocument(documentId: string, signatureBase64: string) {
+    // 3. Sign Document (Upload Signature & Update Record)
+    async signDocument(documentId: string, signatureBase64: string, locationData?: any) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
-        // Resolve Collaborator ID (Optional context check, but strict ID match is safer)
+        // Resolve Collaborator ID
         const { data: collaborator } = await supabase
             .from('collaborators')
             .select('id')
@@ -158,7 +159,8 @@ export const documentService = {
                 .update({
                     signed_at: new Date().toISOString(),
                     signature_url: publicUrl,
-                    // Optional: signed_ip, signed_device_info if passed
+                    signing_location: locationData, // ADDED: Geolocation
+                    signing_ip: 'MOBILE_APP_IP'    // Placeholder: Real IP via RLS/Edge
                 })
                 .eq('id', documentId)
                 .eq('collaborator_id', collaborator.id); // Security check

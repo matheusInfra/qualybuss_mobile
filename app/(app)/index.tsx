@@ -6,6 +6,8 @@ import { leaveService } from '../../services/leaves';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useRealtimeDashboard } from '../../src/hooks/useRealtimeDashboard';
+
 export default function Dashboard() {
     const router = useRouter();
     const { user, signOut } = useAuth();
@@ -14,13 +16,16 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
 
     const loadData = async () => {
+        // Silent update if already loaded
+        if (!profile) setLoading(true);
         try {
-            setLoading(true);
             const p = await profileService.getMyProfile();
             setProfile(p);
 
-            const up = await leaveService.getUpcomingStats(p.id);
-            setUpcoming(up || []);
+            if (p?.id) {
+                const up = await leaveService.getUpcomingStats(p.id);
+                setUpcoming(up || []);
+            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -28,11 +33,15 @@ export default function Dashboard() {
         }
     };
 
+    // Initial Load
     useFocusEffect(
         useCallback(() => {
             loadData();
         }, [])
     );
+
+    // Realtime Subscription
+    useRealtimeDashboard(profile?.id, loadData);
 
     return (
         <ScrollView

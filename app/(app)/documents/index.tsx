@@ -1,46 +1,78 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Linking, Modal, ScrollView, Animated, Alert } from 'react-native';
-import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Linking, Modal, ScrollView, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { CollaboratorDocument, documentService } from '../../../services/documents';
+import { CollaboratorDocument, documentService } from '../../../services/documentServiceUnified';
 import SignatureScreen from 'react-native-signature-canvas';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../../lib/supabase';
 
 const MONTHS = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
-// Desktop Categories: 'Contrato', 'Documentos Pessoais', 'Holerite', 'Folha de Ponto', 'Comprovante Bancário', 'Currículo', 'Outros'
-// "Acesso apenas a categoria holerites por enquanto" -> Restricting list.
 const CATEGORIES = ['Holerite'];
-// const ALL_CATEGORIES = ['Holerite', 'Contrato', 'Documentos Pessoais', 'Folha de Ponto', 'Comprovante Bancário', 'Currículo', 'Outros'];
 
 export default function DocumentsScreen() {
-    const [documents, setDocuments] = useState<CollaboratorDocument[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+    // Query Client for Invalidation
+    const queryClient = useQueryClient();
 
     // Filters State
-    const [selectedYear, setSelectedYear] = useState<number | null>(null); // Default to All Years
+    const [selectedYear, setSelectedYear] = useState<number | null>(null);
     const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Default to All (null)
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [showFilters, setShowFilters] = useState(false);
 
     // Signature State
     const [signingDoc, setSigningDoc] = useState<CollaboratorDocument | null>(null);
     const signatureRef = useRef<any>(null);
 
+    // --- 1. React Query Data Fetching ---
+    const { data: documents = [], isLoading: loading, refetch, isRefetching } = useQuery({
+        queryKey: ['documents', selectedYear, selectedMonth, selectedCategory],
+        queryFn: async () => {
+            const filters: any = {
+                year: selectedYear || undefined,
+                month: selectedMonth || undefined,
+                category: selectedCategory || undefined
+            };
+            return await documentService.getDocuments(filters);
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes fresh
+    });
+
+    // --- 2. Realtime Subscription ---
+    useEffect(() => {
+        // Subscribe to changes in 'collaborator_documents' table
+        const channel = supabase.channel('realtime-documents')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'collaborator_documents' },
+                (payload) => {
+                    console.log('Realtime change detected:', payload);
+                    // Invalidates cache -> triggers auto-refetch
+                    queryClient.invalidateQueries({ queryKey: ['documents'] });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [queryClient]);
+
+
     const handleSignatureOK = async (signature: string) => {
         if (!signingDoc) return;
-        setLoading(true);
         try {
             await documentService.signDocument(signingDoc.id, signature);
             setSigningDoc(null);
             Alert.alert("Sucesso", "Documento assinado com sucesso!");
-            loadDocuments(); // Refresh list to update status
+            // Immediate Refetch to update UI status
+            refetch();
         } catch (error) {
             Alert.alert("Erro", "Falha ao salvar assinatura.");
             console.error(error);
-            setLoading(false);
         }
     };
 
@@ -52,30 +84,6 @@ export default function DocumentsScreen() {
         signatureRef.current?.readSignature();
     }
 
-    // Initial Load
-    useEffect(() => {
-        loadDocuments();
-    }, [selectedYear, selectedMonth, selectedCategory]);
-
-    const loadDocuments = async () => {
-        setLoading(true);
-        try {
-            const filters: any = {
-                year: selectedYear || undefined, // undefined skips filter
-                month: selectedMonth || undefined,
-                category: selectedCategory // Always filter by the selected category (Holerite)
-            };
-
-            const data = await documentService.getMyDocuments(filters);
-            setDocuments(data);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    };
-
     const handleOpenDocument = (url: string) => {
         Linking.openURL(url);
     };
@@ -84,7 +92,7 @@ export default function DocumentsScreen() {
         switch (cat) {
             case 'Holerite': return { name: 'cash-outline', color: '#16a34a', bg: 'bg-green-100' };
             case 'Contrato': return { name: 'briefcase-outline', color: '#ea580c', bg: 'bg-orange-100' };
-            case 'Atestado': return { name: 'medkit-outline', color: '#dc2626', bg: 'bg-red-100' }; // Keeping for legacy/requests
+            case 'Atestado': return { name: 'medkit-outline', color: '#dc2626', bg: 'bg-red-100' };
             case 'Documentos Pessoais': return { name: 'id-card-outline', color: '#2563eb', bg: 'bg-blue-100' };
             case 'Folha de Ponto': return { name: 'time-outline', color: '#4f46e5', bg: 'bg-indigo-100' };
             case 'Comprovante Bancário': return { name: 'receipt-outline', color: '#0891b2', bg: 'bg-cyan-100' };
@@ -99,13 +107,7 @@ export default function DocumentsScreen() {
 
         return (
             <TouchableOpacity
-                onPress={() => {
-                    if (isSigned) {
-                        handleOpenDocument(item.url);
-                    } else {
-                        setSigningDoc(item);
-                    }
-                }}
+                onPress={() => isSigned ? handleOpenDocument(item.url) : setSigningDoc(item)}
                 className={`bg-white p-4 rounded-2xl mb-3 border flex-row items-center gap-4 shadow-sm active:scale-95 transition-transform ${isSigned ? 'border-gray-100' : 'border-indigo-100 bg-indigo-50/10'}`}
             >
                 <View className={`w-14 h-14 rounded-2xl flex items-center justify-center ${style.bg}`}>
@@ -131,7 +133,6 @@ export default function DocumentsScreen() {
                             </Text>
                         )}
 
-                        {/* Status Chips */}
                         {isSigned ? (
                             <View className="flex-row items-center bg-green-100 px-2 py-1 rounded-full">
                                 <Ionicons name="checkmark-circle" size={10} color="#16a34a" />
@@ -157,8 +158,10 @@ export default function DocumentsScreen() {
                 <View className="flex-row justify-between items-center mb-4">
                     <View>
                         <Text className="text-2xl font-bold text-gray-900">Documentos</Text>
-                        <Text className="text-sm text-gray-500">
-                            {documents.length} arquivo(s) encontrado(s)
+                        {/* Status do Cache/Realtime */}
+                        <Text className="text-sm text-gray-500 flex items-center gap-2">
+                            {documents.length} arquivo(s) •
+                            {isRefetching ? <Text className="text-indigo-500"> Atualizando...</Text> : <Text className="text-emerald-500"> Sincronizado</Text>}
                         </Text>
                     </View>
                     <TouchableOpacity
@@ -189,10 +192,10 @@ export default function DocumentsScreen() {
             </View>
 
             {/* Content */}
-            {loading ? (
+            {loading && !isRefetching ? (
                 <View className="flex-1 items-center justify-center">
                     <ActivityIndicator size="large" color="#4f46e5" />
-                    <Text className="text-gray-400 text-sm mt-4">Carregando documentos...</Text>
+                    <Text className="text-gray-400 text-sm mt-4">Sincronizando documentos...</Text>
                 </View>
             ) : (
                 <FlatList
@@ -200,8 +203,8 @@ export default function DocumentsScreen() {
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
                     contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
-                    refreshing={refreshing}
-                    onRefresh={() => { setRefreshing(true); loadDocuments(); }}
+                    refreshing={isRefetching}
+                    onRefresh={refetch}
                     ListEmptyComponent={
                         <View className="items-center justify-center mt-20 opacity-60 px-10">
                             <View className="w-24 h-24 bg-gray-100 rounded-full items-center justify-center mb-6">
@@ -209,7 +212,7 @@ export default function DocumentsScreen() {
                             </View>
                             <Text className="text-lg font-bold text-gray-700 text-center">Nenhum resultado</Text>
                             <Text className="mt-2 text-gray-500 text-center leading-5">
-                                Não encontramos documentos com os filtros aplicados. Tente alterar o período ou categoria.
+                                Não encontramos documentos com os filtros aplicados.
                             </Text>
                             <TouchableOpacity
                                 onPress={() => { setSelectedMonth(null); setSelectedCategory(null); setSelectedYear(null); }}
@@ -222,7 +225,7 @@ export default function DocumentsScreen() {
                 />
             )}
 
-            {/* Filter Modal - REFACTORED to remove NativeWind crash */}
+            {/* Filter Modal */}
             <Modal visible={showFilters} animationType="slide" transparent statusBarTranslucent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
                     <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowFilters(false)} />
@@ -233,7 +236,7 @@ export default function DocumentsScreen() {
                             <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#111827' }}>Filtrar</Text>
                             <TouchableOpacity onPress={() => {
                                 setSelectedMonth(null);
-                                setSelectedCategory(null); // Reset to All
+                                setSelectedCategory(null);
                                 setSelectedYear(null);
                             }}>
                                 <Text style={{ color: '#4f46e5', fontWeight: 'bold', fontSize: 14 }}>Limpar Tudo</Text>
@@ -332,7 +335,7 @@ export default function DocumentsScreen() {
                         </ScrollView>
 
                         <TouchableOpacity
-                            onPress={() => { loadDocuments(); setShowFilters(false); }}
+                            onPress={() => { setShowFilters(false); }}
                             style={{ marginTop: 16, backgroundColor: '#111827', paddingVertical: 16, borderRadius: 12, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}
                         >
                             <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>Ver Resultados</Text>

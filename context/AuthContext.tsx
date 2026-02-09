@@ -31,6 +31,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
+            if (session) registerSession(session);
         });
 
         // Listen for auth changes
@@ -38,10 +39,57 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
+            if (session) registerSession(session);
         });
 
         return () => subscription.unsubscribe();
     }, []);
+
+    // --- Single Device Enforcement ---
+    const registerSession = async (currentSession: Session) => {
+        if (!currentSession?.user?.id) return;
+
+        const sessionToken = currentSession.access_token;
+
+        // 1. Register this session
+        const { error } = await supabase
+            .from('user_active_sessions')
+            .upsert({
+                user_id: currentSession.user.id,
+                session_id: sessionToken,
+                device_info: 'Mobile App',
+                last_seen: new Date().toISOString()
+            });
+
+        if (error) console.error("Failed to register mobile session:", error);
+
+        // 2. Listen for kicks
+        const channel = supabase.channel(`session_guard_${currentSession.user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'user_active_sessions',
+                    filter: `user_id=eq.${currentSession.user.id}`
+                },
+                (payload: any) => {
+                    const remoteSessionId = payload.new.session_id;
+                    if (remoteSessionId && remoteSessionId !== sessionToken) {
+                        console.warn("Mobile Session invalidated.");
+                        // Determine native Alert or web alert (since this is Expo)
+                        // Ideally import { Alert } from 'react-native';
+                        // For now we use console and signOut, assuming UI handles logout state
+                        const Alert = require('react-native').Alert;
+                        Alert.alert("Aviso de Segurança", "Você conectou em outro dispositivo. Esta sessão será encerrada.");
+                        signOut();
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
+    };
 
     // Auto-logout logic based on App State (Background/Inactive)
     // Simplified for mobile: Check validity on becoming active?

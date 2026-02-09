@@ -217,7 +217,20 @@ export default function Login() {
                 </View>
             </Animated.View>
 
-            <View className="absolute bottom-8">
+            <View className="absolute bottom-8 w-full items-center">
+                <View className="flex-row gap-4 mb-2">
+                    <Link href="/legal/terms" asChild>
+                        <TouchableOpacity>
+                            <Text className="text-white/80 text-xs font-medium">Termos de Uso</Text>
+                        </TouchableOpacity>
+                    </Link>
+                    <Text className="text-white/40 text-xs">•</Text>
+                    <Link href="/legal/privacy" asChild>
+                        <TouchableOpacity>
+                            <Text className="text-white/80 text-xs font-medium">Política de Privacidade</Text>
+                        </TouchableOpacity>
+                    </Link>
+                </View>
                 <Text className="text-white/60 text-xs text-center">© 2026 QualyBuss Mobile</Text>
             </View>
         </ImageBackground>

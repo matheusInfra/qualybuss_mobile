@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { TermsGuard } from "../components/TermsGuard";
 
 const MainLayout = () => {
   const { session, loading } = useAuth();
@@ -70,11 +71,19 @@ const MainLayout = () => {
   return <Slot />;
 };
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
+
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <MainLayout />
-      <StatusBar style="dark" />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TermsGuard>
+          <MainLayout />
+        </TermsGuard>
+        <StatusBar style="dark" />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

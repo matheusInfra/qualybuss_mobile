@@ -81,6 +81,15 @@ export default function AppLayout() {
                     }}
                 />
 
+                <Drawer.Screen
+                    name="ponto/index"
+                    options={{
+                        drawerLabel: 'Meu Ponto',
+                        title: 'Registro de Ponto',
+                        drawerIcon: ({ color, size }) => <Ionicons name="finger-print-outline" size={22} color={color} />,
+                    }}
+                />
+
 
             </Drawer>
         </GestureHandlerRootView>
