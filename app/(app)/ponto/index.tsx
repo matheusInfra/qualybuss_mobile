@@ -5,6 +5,8 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import { timeService, TimeEntry } from '../../../services/timeService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import * as Device from 'expo-device'; // You might need to install expo-device, or use basic Platform info
 
 // Simple Tab Component
@@ -95,10 +97,19 @@ export default function PontoScreen() {
     const { data: history = [], isLoading, refetch } = useQuery({
         queryKey: ['timeHistory'],
         queryFn: () => timeService.getHistory(currentMonthStart, currentMonthEnd),
-        enabled: activeTab === 'history'
+        // CRITICAL FIX: Always fetch to ensure SmartAction has correct state (Entry vs Exit)
+        // enabled: activeTab === 'history', 
+        refetchInterval: 30000, // Refresh every 30s to keep sync
+        refetchOnMount: true
     });
 
     // --- RENDER ---
+    useFocusEffect(
+        useCallback(() => {
+            refetch();
+        }, [])
+    );
+
     return (
         <View style={styles.container}>
             <Tabs activeTab={activeTab} onTabChange={setActiveTab} />

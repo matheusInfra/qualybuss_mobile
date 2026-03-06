@@ -64,6 +64,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) console.error("Failed to register mobile session:", error);
 
         // 2. Listen for kicks
+        // 2. Listen for kicks - SIMPLIFIED FILTER
+        // Filter string 'user_id=eq.UUID' can be tricky with RLS. 
+        // We listen to ALL updates we can see and filter in client.
         const channel = supabase.channel(`session_guard_${currentSession.user.id}`)
             .on(
                 'postgres_changes',
@@ -71,17 +74,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'user_active_sessions',
-                    filter: `user_id=eq.${currentSession.user.id}`
+                    // Removing strict filter string to debug/ensure delivery
+                    // If RLS works, we only see our own rows anyway.
                 },
                 (payload: any) => {
+                    // Double check if this update belongs to us
+                    if (payload.new.user_id !== currentSession.user.id) return;
+
                     const remoteSessionId = payload.new.session_id;
-                    if (remoteSessionId && remoteSessionId !== sessionToken) {
-                        console.warn("Mobile Session invalidated.");
-                        // Determine native Alert or web alert (since this is Expo)
-                        // Ideally import { Alert } from 'react-native';
-                        // For now we use console and signOut, assuming UI handles logout state
+                    const mySessionId = currentSession.access_token;
+
+                    // console.log("Session Guard Event:", remoteSessionId, mySessionId); 
+
+                    if (remoteSessionId && remoteSessionId !== mySessionId) {
+                        console.warn("Mobile Session invalidated by:", payload.new.device_info);
                         const Alert = require('react-native').Alert;
-                        Alert.alert("Aviso de Segurança", "Você conectou em outro dispositivo. Esta sessão será encerrada.");
+                        Alert.alert("Aviso de Segurança", `Sua conta foi conectada em outro dispositivo (${payload.new.device_info}). Esta sessão será encerrada.`);
                         signOut();
                     }
                 }
