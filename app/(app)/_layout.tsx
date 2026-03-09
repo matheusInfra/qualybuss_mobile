@@ -45,14 +45,7 @@ export default function AppLayout() {
                     }}
                 />
 
-                <Drawer.Screen
-                    name="occurrences/index"
-                    options={{
-                        drawerLabel: 'Meu Prontuário',
-                        title: 'Prontuário',
-                        drawerIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={22} color={color} />,
-                    }}
-                />
+
 
                 <Drawer.Screen
                     name="documents/index"
